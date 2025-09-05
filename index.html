@@ -1,0 +1,57 @@
+<!-- app/static/index.html -->
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>eConsultation: Sentiment Demo</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; }
+    .card { border: 1px solid #ddd; padding: 12px; margin-bottom: 12px; border-radius: 6px; }
+    input[type=file] { margin-bottom: 8px; }
+    #results { margin-top: 12px; }
+    img.wordcloud { max-width: 100%; border: 1px solid #ccc; }
+    .badge { display:inline-block;padding:4px 8px;border-radius:12px;color:#fff;font-weight:600 }
+    .positive { background: #2e7d32 } .neutral { background: #6c757d } .negative { background: #c62828 }
+  </style>
+</head>
+<body>
+  <h2>eConsultation Sentiment Prototype — Demo</h2>
+  <div class="card">
+    <p>Upload comments CSV (columns: <code>id</code>, <code>draft_id</code>, <code>text</code>)</p>
+    <input id="csvfile" type="file" accept=".csv,.xlsx"/>
+    <button id="uploadBtn">Upload & Analyze</button>
+  </div>
+
+  <div id="results"></div>
+
+<script>
+document.getElementById('uploadBtn').onclick = async () => {
+  const f = document.getElementById('csvfile').files[0];
+  if (!f) { alert('Choose a file'); return; }
+  const fd = new FormData(); fd.append('file', f);
+  document.getElementById('results').innerHTML = 'Processing...';
+  const res = await fetch('/ingest_csv', { method: 'POST', body: fd });
+  const data = await res.json();
+  if (res.status !== 200) {
+    document.getElementById('results').innerText = 'Error: ' + JSON.stringify(data);
+    return;
+  }
+  let html = '';
+  html += '<h3>Word Cloud</h3>';
+  html += `<img class="wordcloud" src="${data.wordcloud}" alt="wordcloud"/>`;
+  html += '<h3>Comments</h3>';
+  for (const r of data.results) {
+    html += `<div class="card">`;
+    html += `<div><strong>ID:</strong> ${r.id} &nbsp; <strong>Lang:</strong> ${r.lang || 'n/a'}</div>`;
+    html += `<p>${r.text}</p>`;
+    const cls = r.sentiment.label;
+    html += `<div><span class="badge ${cls}">${r.sentiment.label.toUpperCase()} (${(r.sentiment.confidence*100).toFixed(0)}%)</span></div>`;
+    html += `<p><strong>Summary:</strong> ${r.summary}</p>`;
+    html += `<p><strong>Keywords:</strong> ${r.keywords.map(k=>k.term).join(', ')}</p>`;
+    html += `</div>`;
+  }
+  document.getElementById('results').innerHTML = html;
+};
+</script>
+</body>
+</html>
